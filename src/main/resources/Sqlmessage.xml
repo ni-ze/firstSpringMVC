@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?> 
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="User"><!--相当于这个xml的包名  -->
+
+<!--type 要将哪个类指定接收从数据库里面取出的值，并在下面与数据库每一栏逐一对应-->
+  <resultMap type="com.imooc.mvcdemo.model.User" id="UserResult"> 
+    <id column="id" jdbcType="INTEGER" property="id"/>
+    <result column="username" jdbcType="VARCHAR" property="userName"/>
+    <result column="password" jdbcType="VARCHAR" property="password"/>
+    <result column="createtime" jdbcType="TIMESTAMP" javaType="java.sql.Timestamp" property="createTime"/>
+    <result column="logindate" jdbcType="TIMESTAMP" javaType="java.sql.Timestamp" property="loginDate"/> 
+    <result column="contidays" jdbcType="INTEGER" property="contiDays"/> 
+    <result column="point" jdbcType="INTEGER" property="point"/>
+  </resultMap>
+
+  <!-- id相当于包名下的方法 ,resultMap表示是查询 id="UserResult"的resultMap所配置的数据库-->
+  <!-- parameterType是DataDao中sql传递传输进来的类型名--> 
+   
+   <!--新建一张userslist，储存所有用户信息-->
+  <insert id="insertuserslist" parameterType="com.imooc.mvcdemo.model.User" useGeneratedKeys="false">
+    INSERT ignore INTO userslist(username,password,point)
+    VALUES(#{userName},#{password},#{point})
+  </insert>
+  
+  <!--查询userslist中是否有输入的userName-->
+  <select id="queryUser" parameterType="com.imooc.mvcdemo.model.User" resultMap="UserResult"> 
+     select username, password ,point from userslist where username=#{userName}
+  </select> 
+  
+  <!--查询userslist中的数据列表-->
+  <select id="queryUserList" parameterType="com.imooc.mvcdemo.model.User" resultMap="UserResult"> 
+     select id, username,password,createtime,point from userslist  
+  </select> 
+  
+  
+  <!--在计算出最新的point之后，更新userslist列表对应用户的积分。-->  
+  <update id="updateUserList" parameterType="com.imooc.mvcdemo.model.User"> 
+     update userslist set point=#{point} where username=#{userName}
+  </update>  
+  
+  <!-- 若userlist中没有输入的userName则新建一张名为userName的用户积分明细表 -->
+  <update id="createTable" parameterType="com.imooc.mvcdemo.model.User">
+    create table ${userName} <!--不会带有#{userName}的单引号，使建表时发生错误-->
+        (
+        id smallint unsigned primary key auto_increment,
+        username varchar(30)  default #{userName},<!--取到的值传入mysql后会自带''单引号-->
+        password varchar(30) not null,
+        logindate timestamp not null default current_timestamp,  
+        contidays  smallint  unsigned not null default 0,
+        point smallint unsigned not null  
+        ) 
+   </update>
+   <!--动态插入，向动态新增的表中--> 
+   <!--在 ${userName}积分明细表中插入 一行  -->
+  <insert id="insertself" parameterType="com.imooc.mvcdemo.model.User">
+  	insert into ${userName} (
+  		 <trim suffixOverrides=",">  
+            <if test="password!=null">
+                password,
+            </if>
+            <if test="contiDays!=null">
+                contidays,
+            </if>
+            <if test="point!=null">
+                point,  
+            </if>
+         </trim> 
+	) values(
+         <trim suffixOverrides=",">  
+            <if test="password!=null">
+                #{password},
+            </if>
+            <if test="contiDays!=null">
+                #{contiDays},
+            </if>
+            <if test="point!=null">
+                #{point},  
+            </if>
+         </trim>  
+	)
+  </insert>
+    
+  <!--查询用户积分明细表的最新编辑的一行，返回logindate、contidays-->
+   <select id="querypoint" parameterType="com.imooc.mvcdemo.model.User" resultMap="UserResult"> 
+     select username,password,logindate,contidays, point from ${userName}  order by logindate desc limit 1
+  </select>   
+    <!--查询eachuser中的数据列表-->
+  <select id="queryEachUserList" parameterType="com.imooc.mvcdemo.model.User" resultMap="UserResult"> 
+     select id, username,password,logindate,contidays, point from ${userName} 
+  </select> 
+  
+<!-- 
+  
+  <update id="update" parameterType="UserAlias">
+    UPDATE user SET
+    username = #{username,jdbcType=VARCHAR},
+    password = #{password.encrypted,jdbcType=VARCHAR},
+    administrator = #{administrator,jdbcType=BOOLEAN}
+    WHERE
+    id = #{id,jdbcType=INTEGER}
+  </update>
+
+    Unique constraint check
+  <select id="isUniqueUsername" parameterType="map" resultType="boolean">
+    SELECT (count(*) = 0)
+    FROM user
+    WHERE ((#{userId,jdbcType=BIGINT} IS NOT NULL AND id != #{userId,jdbcType=BIGINT}) OR #{userId,jdbcType=BIGINT} IS
+    NULL)  other than me
+    AND (username = #{username,jdbcType=VARCHAR})
+  </select> -->
+</mapper>
